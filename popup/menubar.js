@@ -5,18 +5,18 @@ const optionsButton = document.querySelector('img.options');
 const removeButton = document.querySelector('button.button-remove');
 const domainToAllow = document.querySelector('span.domainToAllow');
 const domainToBlock = document.querySelector('span.domainToBlock');
-const getBackgroundPage = browser.runtime.getBackgroundPage();
+const getBackgroundPage = chrome.runtime.getBackgroundPage;
 
 function handleClick() {
   if (this.value === 'off') {
-    getBackgroundPage.then(bg => bg.disableBlocker());
+    getBackgroundPage(bg => bg.disableBlocker());
   } else {
-    getBackgroundPage.then(bg => bg.setBlocker());
+    getBackgroundPage(bg => bg.setBlocker());
   }
 }
 
 function markExtensionStatus() {
-  getBackgroundPage.then((bg) => {
+  getBackgroundPage((bg) => {
     const status = bg.getStatus();
     if (status === 'off') {
       radioOff.checked = true;
@@ -27,9 +27,9 @@ function markExtensionStatus() {
 }
 
 function displayCurrentDomain() {
-  getBackgroundPage.then((bg) => {
+  getBackgroundPage((bg) => {
     let url;
-    bg.getDomain().then((tabs) => {
+    bg.getDomain((tabs) => {
       url = new URL(tabs[0].url);
       // dont show the button for non-http pages
       if (['http:', 'https:'].indexOf(url.protocol) === -1) return false;
@@ -38,7 +38,7 @@ function displayCurrentDomain() {
       domainToAllow.textContent = urlToMatch;
       domainToBlock.textContent = urlToMatch;
 
-      bg.getSites().then((storage) => {
+      bg.getSites((storage) => {
         if (storage.sites.includes(urlToMatch)) {
           removeButton.style.display = 'block';
           addButton.style.display = 'none';
@@ -57,23 +57,23 @@ function refreshToolbar() {
 }
 
 function addWebsite() {
-  getBackgroundPage.then((bg) => {
-    bg.addCurrentlyActiveSite().then(() => {
+  getBackgroundPage((bg) => {
+    bg.addCurrentlyActiveSite(() => {
       refreshToolbar();
     });
   });
 }
 
 function removeWebsite() {
-  getBackgroundPage.then((bg) => {
-    bg.removeCurrentlyActiveSite().then(() => {
+  getBackgroundPage((bg) => {
+    bg.removeCurrentlyActiveSite(() => {
       refreshToolbar();
     });
   });
 }
 
 function openOptions() {
-  browser.tabs.create({
+  chrome.tabs.create({
     url: '/options/options.html',
   });
   window.close();

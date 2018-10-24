@@ -1,6 +1,6 @@
 const blockedSites = document.querySelector('.blocked-sites ul');
 const form = document.querySelector('form');
-const getSites = browser.storage.local.get('sites');
+const getSites = (callback) => {chrome.storage.local.get('sites', callback);};
 
 function addToBlockedList(text) {
   const label = document.createElement('p');
@@ -26,7 +26,7 @@ function hasNoExtension(url) {
 }
 
 function restoreOptions() {
-  getSites.then((storage) => {
+  getSites((storage) => {
     storage.sites.forEach((site) => {
       addToBlockedList(site);
     });
@@ -40,9 +40,9 @@ function saveSite(event) {
   addToBlockedList(url);
   form.site.value = '';
 
-  getSites.then((storage) => {
+  getSites((storage) => {
     storage.sites.push(url);
-    browser.storage.local.set({
+    chrome.storage.local.set({
       sites: storage.sites,
     });
   });
@@ -55,12 +55,12 @@ function deleteSite(event) {
     const toDeleteText = event.target.previousSibling.textContent;
     toDeleteParent.removeChild(toDelete);
 
-    getSites.then((storage) => {
+    getSites((storage) => {
       const i = storage.sites.indexOf(toDeleteText);
       if (i !== -1) {
         storage.sites.splice(i, 1);
       }
-      browser.storage.local.set({
+      chrome.storage.local.set({
         sites: storage.sites,
       });
     });

@@ -6,15 +6,16 @@ const ImpulseBlocker = {
    * to the blocked list the listener is refreshed.
    */
   init: () => {
-    const handlingStorage = browser.storage.local.get('sites').then((storage) => {
+    const handlingStorage = chrome.storage.local.get('sites', (storage) => {
       if (typeof storage.sites === 'undefined') {
-        return browser.storage.local.set({
+        return chrome.storage.local.set({
           sites: [],
-        });
+        }, ImpulseBlocker.setBlocker);
+
       }
+      else ImpulseBlocker.setBlocker();
     });
 
-    handlingStorage.then(ImpulseBlocker.setBlocker);
   },
 
   /**
@@ -23,7 +24,7 @@ const ImpulseBlocker = {
   redirect: (requestDetails) => {
     const original = encodeURIComponent(requestDetails.url);
     const interceptPage = `/resources/redirect.html?target=${original}`;
-    browser.tabs.update(requestDetails.tabId, { url: interceptPage });
+    chrome.tabs.update(requestDetails.tabId, { url: interceptPage });
   },
 
   /**
@@ -42,7 +43,7 @@ const ImpulseBlocker = {
       icon = 'icons/icon96-disabled.png';
     }
 
-    browser.browserAction.setIcon({
+    chrome.browserAction.setIcon({
       path: icon,
     });
   },
@@ -52,12 +53,12 @@ const ImpulseBlocker = {
    * by the WebExtensions API.
    */
   setBlocker: () => {
-    browser.storage.local.get('sites').then((storage) => {
+    chrome.storage.local.get('sites',(storage) => {
       const pattern = storage.sites.map(item => `*://*.${item}/*`);
 
-      browser.webRequest.onBeforeRequest.removeListener(ImpulseBlocker.redirect);
+      chrome.webRequest.onBeforeRequest.removeListener(ImpulseBlocker.redirect);
       if (pattern.length > 0) {
-        browser.webRequest.onBeforeRequest.addListener(
+        chrome.webRequest.onBeforeRequest.addListener(
           ImpulseBlocker.redirect,
           { urls: pattern, types: ['main_frame'] },
           ['blocking'],
@@ -65,7 +66,7 @@ const ImpulseBlocker = {
       }
     });
 
-    browser.storage.onChanged.addListener(() => {
+    chrome.storage.onChanged.addListener(() => {
       // if the extension off we should not be bothered by restarting with new list
       if (ImpulseBlocker.getStatus() === 'on') {
         ImpulseBlocker.setBlocker();
@@ -79,7 +80,7 @@ const ImpulseBlocker = {
    * Removes the web request listener and turns the extension off.
    */
   disableBlocker: () => {
-    browser.webRequest.onBeforeRequest.removeListener(ImpulseBlocker.redirect);
+    chrome.webRequest.onBeforeRequest.removeListener(ImpulseBlocker.redirect);
     ImpulseBlocker.setStatus('off');
   },
 
@@ -88,9 +89,9 @@ const ImpulseBlocker = {
    * @param  {string} url Url to add to the list
    */
   addSite: (url) => {
-    browser.storage.local.get('sites').then((storage) => {
+    chrome.storage.local.get('sites',(storage) => {
       storage.sites.push(url);
-      browser.storage.local.set({
+      chrome.storage.local.set({
         sites: storage.sites,
       });
     });
@@ -101,12 +102,12 @@ const ImpulseBlocker = {
    * @param  {string} url Url to remove to the list
    */
   removeSite: (url) => {
-    browser.storage.local.get('sites').then((storage) => {
+    chrome.storage.local.get('sites',(storage) => {
       const i = storage.sites.indexOf(url);
       if (i !== -1) {
         storage.sites.splice(i, 1);
       }
-      browser.storage.local.set({
+      chrome.storage.local.set({
         sites: storage.sites,
       });
     });
@@ -129,25 +130,23 @@ function setBlocker() {
   ImpulseBlocker.setBlocker();
 }
 
-function getDomain() {
-  return browser.tabs.query({ active: true, currentWindow: true });
+function getDomain(callback) {
+  return chrome.tabs.query({ active: true, currentWindow: true }, callback);
 }
 
-function getSites() {
-  return browser.storage.local.get('sites');
+function getSites(callback) {
+  return chrome.storage.local.get('sites', callback);
 }
 
 function addCurrentlyActiveSite() {
-  const gettingActiveTab = browser.tabs.query({ active: true, currentWindow: true });
-  return gettingActiveTab.then((tabs) => {
+  return chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const url = new URL(tabs[0].url);
     ImpulseBlocker.addSite(url.hostname.replace(/^www\./, ''));
   });
 }
 
 function removeCurrentlyActiveSite() {
-  const gettingActiveTab = browser.tabs.query({ active: true, currentWindow: true });
-  return gettingActiveTab.then((tabs) => {
+  return chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const url = new URL(tabs[0].url);
     ImpulseBlocker.removeSite(url.hostname.replace(/^www\./, ''));
   });
